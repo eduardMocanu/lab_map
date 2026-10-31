@@ -1,0 +1,8 @@
+1;edy;e@gmail.com;123456
+abc;wrongid;wrong@gmail.com;123456
+2;toofew;toofew@gmail.com
+8;anaaremere;anaaa@gmail.com;fefeafea
+4;;noname@gmail.com;123456
+5;bademail;bademail.com;123456
+10;duplicate;dup@gmail.com;123456
+6;ana;a@gmail.com;feafaf
