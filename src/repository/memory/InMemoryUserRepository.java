@@ -26,7 +26,7 @@ public class InMemoryUserRepository extends InMemoryRepository<Long, User> imple
     @Override
     public User save(User user) {
         if (user != null && user.getId() == null) {
-            user.setId(IdGenerator.nextId(entities.values()));
+            user.setId(IdGenerator.nextId(entities.values().stream().toList()));
         }
         return super.save(user);
     }

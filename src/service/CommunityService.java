@@ -4,6 +4,7 @@ import model.Friendship;
 import model.User;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Service that analyzes the network as a graph: users are nodes and friendships are edges.
@@ -15,7 +16,7 @@ public class CommunityService {
     private final FriendshipService friendshipService;
 
     /** Adjacency lists: for each user id, the ids of their friends. Rebuilt before every query. */
-    private final HashMap<Long, ArrayList<Long>> graph = new HashMap<>();
+    private HashMap<Long, ArrayList<Long>> graph = new HashMap<>();
 
     /**
      * @param userService       the service that provides the users (the nodes)
@@ -32,24 +33,14 @@ public class CommunityService {
      */
     private void loadGraph() {
         graph.clear();
-        List<Friendship> friendships = friendshipService.getAll();
 
-        for (User user : userService.getAll()) {
-            graph.put(user.getId(), new ArrayList<>());
-        }
+        HashMap<Long, ArrayList<Long>> graph = userService.getAll().stream().collect(Collectors.toMap(User::getId, user -> new ArrayList<>(), (a, b) -> a, HashMap::new));
 
-        for (var friendship : friendships) {
-            Long id1 = friendship.getUserId1();
-            Long id2 = friendship.getUserId2();
-            if (!graph.containsKey(id1)) {
-                graph.put(id1, new ArrayList<>());
-            }
-            if (!graph.containsKey(id2)) {
-                graph.put(id2, new ArrayList<>());
-            }
-            graph.get(id1).add(id2);
-            graph.get(id2).add(id1);
-        }
+        friendshipService.getAll().forEach(friendship -> {
+            graph.computeIfAbsent(friendship.getUserId1(), id -> new ArrayList<>()).add(friendship.getUserId2());
+            graph.computeIfAbsent(friendship.getUserId2(), id -> new ArrayList<>()).add(friendship.getUserId1());
+        });
+        this.graph = graph;
     }
 
     /**
@@ -62,32 +53,17 @@ public class CommunityService {
     public List<User> mostSocialCommunity() {
         loadGraph();
 
-        int bestLength = -1;
-        Long bestStart = null;
+        Optional<Long> bestStart = graph.keySet().stream()
+                .max(Comparator.comparingInt(node -> longestPathFrom(node, new HashSet<>())));
 
-        for (Long node : graph.keySet()) {
-            int length = longestPathFrom(node, new HashSet<>());
-            if (length > bestLength) {
-                bestLength = length;
-                bestStart = node;
-            }
-        }
-
-        if (bestStart == null) {
+        if (bestStart.isEmpty()) {
             return new ArrayList<>();
         }
 
         Set<Long> community = new HashSet<>();
-        dfs(bestStart, community);
+        dfs(bestStart.get(), community);
 
-        List<User> users = new ArrayList<>();
-        for (Long id : community) {
-            Optional<User> user = userService.findOne(id);
-            if (user.isPresent()) {
-                users.add(user.get());
-            }
-        }
-        return users;
+        return community.stream().map(userService::findOne).flatMap(Optional::stream).collect(Collectors.toList());
     }
 
     /**
@@ -105,6 +81,7 @@ public class CommunityService {
                 counter += 1;
             }
         }
+
         return counter;
     }
 
@@ -115,12 +92,13 @@ public class CommunityService {
      * @param visited the set to which every reached user id is added
      */
     private void dfs(Long idStart, Set<Long> visited) {
-        visited.add(idStart);
-        for (var neighbour : graph.get(idStart)) {
-            if (!visited.contains(neighbour)) {
-                dfs(neighbour, visited);
-            }
+        if (!visited.add(idStart)) {
+            return;
         }
+        graph.get(idStart).stream()
+                .filter(n -> !visited.contains(n))
+                .forEach(n -> {dfs(n, visited);});
+
     }
 
     /**
@@ -134,12 +112,7 @@ public class CommunityService {
      */
     private int longestPathFrom(Long node, Set<Long> onPath) {
         onPath.add(node);
-        int best = 0;
-        for (Long neighbour : graph.get(node)) {
-            if (!onPath.contains(neighbour)) {
-                best = Math.max(best, 1 + longestPathFrom(neighbour, onPath));
-            }
-        }
+        int best = graph.get(node).stream().filter(id -> !onPath.contains(id)).mapToInt(nei -> 1 + longestPathFrom(nei, onPath)).max().orElse(0);
         onPath.remove(node);
         return best;
     }

@@ -11,6 +11,8 @@ import repository.UserRepository;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Service for managing friendships between users.
@@ -125,16 +127,24 @@ public class FriendshipService extends AbstractService<Tuple<Long, Long>, Friend
      * @throws exceptions.RepositoryException if the change cannot be persisted
      */
     public List<Friendship> removeFriendshipsOfMissingUsers() {
-        List<Friendship> removed = new ArrayList<>();
-        for (Friendship friendship : repository.findAll()) {
-            boolean user1Exists = userRepository.findOne(friendship.getUserId1()).isPresent();
-            boolean user2Exists = userRepository.findOne(friendship.getUserId2()).isPresent();
-            if (!user1Exists || !user2Exists) {
-                repository.delete(friendship.getId());
-                removed.add(friendship);
-            }
-        }
-        return removed;
+        List<Friendship> orphans = repository.findAll().stream()
+                .filter(this::hasMissingUser)
+                .collect(Collectors.toList());
+
+        orphans.stream()
+                .map(Friendship::getId)
+                .forEach(repository::delete);
+        return orphans;
+    }
+
+    /**
+     * @param friendship a friendship
+     * @return true if at least one of the two users does not exist
+     */
+    private boolean hasMissingUser(Friendship friendship) {
+        return Stream.of(friendship.getUserId1(), friendship.getUserId2())
+                .map(userRepository::findOne)
+                .anyMatch(Optional::isEmpty);
     }
 
     /**

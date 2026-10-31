@@ -50,11 +50,7 @@ public abstract class AbstractService<ID, E extends Entity<ID>, R extends Reposi
      * @return a list of all entities; empty if there are none
      */
     public List<E> getAll() {
-        List<E> result = new ArrayList<>();
-        for (E entity : repository.findAll()) {
-            result.add(entity);
-        }
-        return result;
+        return repository.findAll().stream().toList();
     }
 
     /**

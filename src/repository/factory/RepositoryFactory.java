@@ -4,6 +4,7 @@ import exceptions.ConfigurationException;
 import model.Friendship;
 import model.User;
 import repository.FriendshipRepository;
+import repository.Repository;
 import repository.UserRepository;
 import repository.db.FriendshipDbRepository;
 import repository.db.UserDbRepository;
@@ -19,7 +20,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.util.Properties;
+import java.util.*;
+import java.util.function.Supplier;
 
 /**
  * Creates the repositories of the application (Simple Factory pattern).
@@ -43,6 +45,7 @@ public class RepositoryFactory {
 
     private final Properties properties = new Properties();
     private final RepositoryType type;
+
 
     /**
      * Loads the configuration from the given properties file and reads the repository type.
@@ -89,17 +92,15 @@ public class RepositoryFactory {
      * @throws exceptions.RepositoryException if the users file exists but cannot be read
      */
     public UserRepository createUserRepository(Validator<User> validator) {
-        switch (type) {
-            case MEMORY:
-                return new InMemoryUserRepository(validator);
-            case FILE:
-                return new UserFileRepository(validator, getRequired("file.users"));
-            case DATABASE:
-                return new UserDbRepository(validator,
-                        getRequired("db.url"), getRequired("db.user"), getRequired("db.password"));
-            default:
-                throw new ConfigurationException("Unsupported repository type: " + type);
-        }
+
+        Map<RepositoryType, Supplier<UserRepository>> repositoryMap = new EnumMap<>(RepositoryType.class);
+        repositoryMap.put(RepositoryType.MEMORY, () -> new InMemoryUserRepository(validator));
+        repositoryMap.put(RepositoryType.FILE, () -> new UserFileRepository(validator, getRequired("file.users")));
+        repositoryMap.put(RepositoryType.DATABASE, () -> new UserDbRepository(validator, getRequired("db.url"), getRequired("db.user"), getRequired("db.password")));
+
+        Supplier<UserRepository> creator = Optional.ofNullable(repositoryMap.get(type))
+                .orElseThrow(() -> new ConfigurationException("No users repository for type " + type));
+        return creator.get();
     }
 
     /**
@@ -111,17 +112,14 @@ public class RepositoryFactory {
      * @throws exceptions.RepositoryException if the friendships file exists but cannot be read
      */
     public FriendshipRepository createFriendshipRepository(Validator<Friendship> validator) {
-        switch (type) {
-            case MEMORY:
-                return new InMemoryFriendshipRepository(validator);
-            case FILE:
-                return new FriendshipFileRepository(validator, getRequired("file.friendships"));
-            case DATABASE:
-                return new FriendshipDbRepository(validator,
-                        getRequired("db.url"), getRequired("db.user"), getRequired("db.password"));
-            default:
-                throw new ConfigurationException("Unsupported repository type: " + type);
-        }
+        Map<RepositoryType, Supplier<FriendshipRepository>> repositoryMap = new EnumMap<>(RepositoryType.class);
+        repositoryMap.put(RepositoryType.MEMORY, () -> new InMemoryFriendshipRepository(validator));
+        repositoryMap.put(RepositoryType.FILE, () -> new FriendshipFileRepository(validator, getRequired("file.friendships")));
+        repositoryMap.put(RepositoryType.DATABASE, () -> new FriendshipDbRepository(validator, getRequired("db.url"), getRequired("db.user"), getRequired("db.password")));
+
+        Supplier<FriendshipRepository> creator = Optional.ofNullable(repositoryMap.get(type))
+                .orElseThrow(() -> new ConfigurationException("No friendship repository for type " + type));
+        return creator.get();
     }
 
     /**

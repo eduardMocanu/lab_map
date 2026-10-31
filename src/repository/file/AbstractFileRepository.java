@@ -11,12 +11,16 @@ import validators.Validator;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * Repository that keeps entities in memory (inherited from {@link InMemoryRepository})
@@ -109,52 +113,63 @@ public abstract class AbstractFileRepository<ID, E extends Entity<ID>> extends I
      *
      * @throws RepositoryException if the file exists but cannot be read
      */
+    /**
+     * Reads the file and stores every valid entity.
+     * Lines are read with {@link Files#lines(Path, java.nio.charset.Charset)} and kept in a list,
+     * so each invalid line can be reported with its number; invalid lines are skipped.
+     *
+     * @throws RepositoryException if the file exists but cannot be read
+     */
     private void loadData() {
         if (!Files.exists(filePath)) {
             return;
         }
-        try (BufferedReader reader = Files.newBufferedReader(filePath, StandardCharsets.UTF_8)) {
-            String line;
-            int lineNumber = 0;
-            while ((line = reader.readLine()) != null) {
-                lineNumber++;
-                if (line.isBlank()) {
-                    continue;
-                }
-                try {
-                    E entity = extractEntity(line);
-                    super.save(entity);
-                } catch (RepositoryException | ValidationException | DuplicateEntityException e) {
-                    String message = filePath + ", line " + lineNumber + " skipped: "
-                            + e.getMessage().replace('\n', ' ');
-                    loadErrors.add(message);
-                    System.err.println("Warning: " + message);
-                }
-            }
-        } catch (IOException e) {
+        List<String> lines;
+        try (Stream<String> stream = Files.lines(filePath, StandardCharsets.UTF_8)) {
+            lines = stream.toList();
+        } catch (IOException | UncheckedIOException e) {
             throw new RepositoryException("Could not read file " + filePath + ".", e);
+        }
+
+        IntStream.range(0, lines.size())
+                .filter(i -> !lines.get(i).isBlank())
+                .forEach(i -> loadLine(lines.get(i), i + 1));
+    }
+
+    /**
+     * Converts one line into an entity and stores it with {@code super.save}, which validates it
+     * without rewriting the file. An invalid line is reported (file, line number, reason) and skipped.
+     *
+     * @param line       the line to load
+     * @param lineNumber the number of the line in the file, starting from 1
+     */
+    private void loadLine(String line, int lineNumber) {
+        try {
+            super.save(extractEntity(line));
+        } catch (RepositoryException | ValidationException | DuplicateEntityException e) {
+            String message = filePath + ", line " + lineNumber + " skipped: "
+                    + e.getMessage().replace('\n', ' ');
+            loadErrors.add(message);
+            System.err.println("Warning: " + message);
         }
     }
 
     /**
      * Rewrites the whole file with the current content of the repository.
+     * The lines are built with a stream over the entities and written with {@link Files#write}.
      * The parent folder is created if it does not exist.
      *
-     * @throws RepositoryException if the file cannot be written
+     * @throws RepositoryException if the folder or the file cannot be written
      */
     protected void writeToFile() {
+        List<String> lines = entities.values().stream()
+                .map(this::createEntityAsString)
+                .collect(Collectors.toList());
         try {
             if (filePath.getParent() != null) {
                 Files.createDirectories(filePath.getParent());
             }
-        } catch (IOException e) {
-            throw new RepositoryException("Could not create the folder for " + filePath + ".", e);
-        }
-        try (BufferedWriter writer = Files.newBufferedWriter(filePath, StandardCharsets.UTF_8)) {
-            for (E entity : entities.values()) {
-                writer.write(createEntityAsString(entity));
-                writer.newLine();
-            }
+            Files.write(filePath, lines, StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new RepositoryException("Could not write file " + filePath + ".", e);
         }

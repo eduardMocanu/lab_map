@@ -82,10 +82,8 @@ public class ConsoleUI implements UI {
     private void checkConsistency() {
         try {
             List<Friendship> removed = friendshipService.removeFriendshipsOfMissingUsers();
-            for (Friendship friendship : removed) {
-                System.out.println("Removed friendship " + friendship.getUserId1() + " - "
-                        + friendship.getUserId2() + ": one of the users does not exist.");
-            }
+            removed.stream().map(friendship -> "Removed friendship " + friendship.getUserId1() + " - "
+                     + friendship.getUserId2() + ": one of the users does not exist.").forEach(System.out::println);
         } catch (RepositoryException e) {
             System.out.println("Storage error: " + e.getMessage());
         } catch (UnsupportedOperationException e) {
@@ -213,9 +211,7 @@ public class ConsoleUI implements UI {
             System.out.println("No users.");
             return;
         }
-        for (User user : users) {
-            System.out.println(user);
-        }
+        users.forEach(System.out::println);
     }
 
     /** Command {@code friendships}: prints all friendships, with usernames. */
@@ -225,9 +221,7 @@ public class ConsoleUI implements UI {
             System.out.println("No friendships.");
             return;
         }
-        for (Friendship friendship : friendships) {
-            System.out.println(describe(friendship));
-        }
+        friendships.forEach(System.out::println);
     }
 
     /** Command {@code communities}: prints the number of communities in the network. */
@@ -243,9 +237,7 @@ public class ConsoleUI implements UI {
             return;
         }
         System.out.println("Most sociable community (" + community.size() + " users):");
-        for (User user : community) {
-            System.out.println("  " + user);
-        }
+        community.stream().map(user -> " " + user).forEach(System.out::println);
     }
 
     /** Command {@code help}: prints the list of available commands. */

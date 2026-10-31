@@ -2,6 +2,7 @@ import UI.ConsoleUI;
 import UI.UI;
 import exceptions.ConfigurationException;
 import exceptions.RepositoryException;
+import exceptions.ValidationException;
 import repository.FriendshipRepository;
 import repository.UserRepository;
 import repository.factory.RepositoryFactory;
@@ -30,7 +31,11 @@ public class Main {
     public static void main(String[] args) {
         try {
             RepositoryFactory factory = new RepositoryFactory();
-            UserRepository userRepository = factory.createUserRepository(new UserValidator());
+            UserRepository userRepository = factory.createUserRepository(new UserValidator().andThen((user) -> {
+                if (user.getUsername().equals("admin")) {
+                    throw new ValidationException("Admin username is reserved for different purposes");
+                }
+            }));
             FriendshipRepository friendshipRepository = factory.createFriendshipRepository(new FriendshipValidator());
             System.out.println("Persistence: " + factory.getType());
 
