@@ -23,6 +23,11 @@ public interface Validator<T> {
      */
     void validate(T entity);
 
+    /**
+     * Adds the ability to chain validators
+     * @param next next validator that we want to check
+     * @return the new validator with the validation logic of both
+     */
     default Validator<T> andThen(Validator<T> next) {
         if (next == null) {
             throw new NullPointerException("Validator cannot be null.");

@@ -4,6 +4,10 @@ import model.Friendship;
 
 import java.util.function.Predicate;
 
+/**
+ * Contains the static methods used as criteria for filtering friendships
+ */
+
 public final class FriendshipCriteria {
 
     private FriendshipCriteria() {

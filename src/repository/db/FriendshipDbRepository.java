@@ -17,7 +17,7 @@ import java.util.Optional;
 public class FriendshipDbRepository implements FriendshipRepository {
 
     private static final String NOT_IMPLEMENTED =
-            "Database persistence is not implemented yet (Lab 4). Set repository.type to FILE or MEMORY.";
+            "Database persistence is not implemented yet (Lab 5). Set repository.type to FILE or MEMORY.";
 
     private final Validator<Friendship> validator;
     private final String url;

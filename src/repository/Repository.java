@@ -35,13 +35,19 @@ public interface Repository<ID, E extends Entity<ID>> {
      */
     List<E> findAll();
 
+    /**
+     * Finds all entities that pass the filter
+     * @param filter the predicate on which we base our filtering
+     * @return all the elements of type E that pass the filtering
+     */
+
     default List<E> findAll(Predicate<E> filter) {
         if (filter == null) {
             throw new IllegalArgumentException("Filter cannot be null.");
         }
         return findAll().stream()
                 .filter(filter)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     /**

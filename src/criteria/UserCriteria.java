@@ -4,6 +4,11 @@ import model.User;
 
 import java.util.function.Predicate;
 
+
+/**
+ * Contains the static methods used for filtering Users based on predicates
+ */
+
 public final class UserCriteria {
 
     private UserCriteria() {}

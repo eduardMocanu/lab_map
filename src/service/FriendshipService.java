@@ -1,5 +1,6 @@
 package service;
 
+import criteria.FriendshipCriteria;
 import exceptions.DuplicateEntityException;
 import exceptions.EntityNotFoundException;
 import model.Friendship;
@@ -97,7 +98,7 @@ public class FriendshipService extends AbstractService<Tuple<Long, Long>, Friend
      */
     public Friendship removeFriendship(Long user1, Long user2) {
         Tuple<Long, Long> id = Friendship.normalize(user1, user2);
-        if (repository.findOne(id).isEmpty()) {
+        if (repository.findAll(FriendshipCriteria.involves(user1).and(FriendshipCriteria.involves(user2))).isEmpty()) {
             throw new EntityNotFoundException("Users " + user1 + " and " + user2 + " are not friends.");
         }
         return remove(id);
