@@ -132,15 +132,27 @@ public class ConsoleUI implements UI {
 
     /**
      * Command {@code adduser <username> <email> <password>}: adds a new user.
+     * With no arguments ({@code adduser} alone), the fields are asked one per line,
+     * so they may contain spaces.
      *
      * @param args the words of the command
      */
     private void addUser(String[] args) {
-        if (args.length != 4) {
-            System.out.println("Usage: adduser <username> <email> <password>");
+        User user;
+        if (args.length == 1) {
+            System.out.print("username: ");
+            String username = scanner.nextLine();
+            System.out.print("email: ");
+            String email = scanner.nextLine();
+            System.out.print("password: ");
+            String password = scanner.nextLine();
+            user = userService.addUser(username, email, password);
+        } else if (args.length == 4) {
+            user = userService.addUser(args[1], args[2], args[3]);
+        } else {
+            System.out.println("Usage: adduser <username> <email> <password>   (or just: adduser)");
             return;
         }
-        User user = userService.addUser(args[1], args[2], args[3]);
         System.out.println("Added: " + user);
     }
 

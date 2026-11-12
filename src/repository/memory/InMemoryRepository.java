@@ -79,7 +79,9 @@ public class InMemoryRepository<ID, E extends Entity<ID>> implements Repository<
         return Optional.ofNullable(entities.remove(id));
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Optional<E> update(E entity) {
         if (entity == null) {
@@ -87,8 +89,9 @@ public class InMemoryRepository<ID, E extends Entity<ID>> implements Repository<
         }
         validator.validate(entity);
         if (entity.getId() == null || !entities.containsKey(entity.getId())) {
-            return Optional.empty();
+            return Optional.of(entity);
         }
-        return Optional.ofNullable(entities.put(entity.getId(), entity));
+        entities.put(entity.getId(), entity);
+        return Optional.empty();
     }
 }

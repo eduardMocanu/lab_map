@@ -213,20 +213,24 @@ public abstract class AbstractFileRepository<ID, E extends Entity<ID>> extends I
 
     /**
      * {@inheritDoc}
-     * The file is rewritten only if an entity was actually replaced; if writing fails,
-     * the old entity is put back, so memory and file stay consistent.
+     * The file is rewritten only if the entity was actually updated; if writing fails,
+     * the previous entity is put back, so memory and file stay consistent.
      */
     @Override
     public Optional<E> update(E entity) {
-        Optional<E> old = super.update(entity);
-        if (old.isPresent()) {
+        if (entity == null) {
+            throw new IllegalArgumentException("Entity cannot be null.");
+        }
+        E previous = entity.getId() == null ? null : entities.get(entity.getId());
+        Optional<E> notUpdated = super.update(entity);
+        if (notUpdated.isEmpty()) {
             try {
                 writeToFile();
             } catch (RepositoryException e) {
-                entities.put(entity.getId(), old.get());
+                entities.put(entity.getId(), previous);
                 throw e;
             }
         }
-        return old;
+        return notUpdated;
     }
 }

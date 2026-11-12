@@ -11,7 +11,7 @@ import model.User;
 public class UserValidator implements Validator<User> {
 
     /** The maximum number of characters allowed in a username. */
-    private static final int MAX_USERNAME_LENGTH = 20;
+    private static final int MAX_USERNAME_LENGTH = 50;
 
     /** The minimum number of characters required in a password. */
     private static final int MIN_PASSWORD_LENGTH = 4;
@@ -56,8 +56,8 @@ public class UserValidator implements Validator<User> {
         } else {
             if (username.length() > MAX_USERNAME_LENGTH)
                 errors.append("Username cannot have more than " + MAX_USERNAME_LENGTH + " characters.\n");
-            if (username.contains(";"))
-                errors.append("Username cannot contain ';'.\n");
+//            if (username.contains(";"))
+//                errors.append("Username cannot contain ';'.\n");
         }
     }
 

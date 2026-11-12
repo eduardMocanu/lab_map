@@ -76,7 +76,7 @@ public interface Repository<ID, E extends Entity<ID>> {
      * Validates an entity and replaces the stored entity that has the same id.
      *
      * @param entity the entity with new data
-     * @return the old entity, or an empty Optional if none had this id
+     * @return an empty Optional if the entity was updated; the entity itself if no entity had its id
      * @throws IllegalArgumentException       if {@code entity} is null
      * @throws exceptions.ValidationException if the entity is not valid
      * @throws exceptions.RepositoryException if the change cannot be persisted
