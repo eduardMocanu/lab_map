@@ -1,8 +1,6 @@
 import UI.ConsoleUI;
 import UI.UI;
-import exceptions.ConfigurationException;
-import exceptions.RepositoryException;
-import exceptions.ValidationException;
+import exceptions.*;
 import repository.FriendshipRepository;
 import repository.UserRepository;
 import repository.factory.RepositoryFactory;
@@ -43,12 +41,18 @@ public class Main {
             FriendshipService friendshipService = new FriendshipService(userRepository, friendshipRepository);
             CommunityService communityService = new CommunityService(userService, friendshipService);
 
-            UI ui = new ConsoleUI(userService, friendshipService, communityService);
+            int pageSize = factory.getPageSize();
+            UI ui = new ConsoleUI(userService, friendshipService, communityService, pageSize);
             ui.run();
         } catch (ConfigurationException e) {
             System.out.println("Configuration error: " + e.getMessage());
         } catch (RepositoryException e) {
             System.out.println("Could not load the data: " + e.getMessage());
+        }
+        catch (NumberFormatException e) {
+            System.out.println("Error: ids must be numbers.");
+        } catch (ValidationException | EntityNotFoundException | DuplicateEntityException | IllegalArgumentException e) {
+            System.out.println("Error: " + e.getMessage());
         }
     }
 }

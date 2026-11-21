@@ -2,6 +2,8 @@ package repository;
 
 import criteria.UserCriteria;
 import model.User;
+import util.paging.Page;
+import util.paging.Pageable;
 
 import java.util.Optional;
 
@@ -11,7 +13,7 @@ import java.util.Optional;
  * so every implementation (memory, file) gets them without duplicating code;
  * a database implementation can override them with a SQL query.
  */
-public interface UserRepository extends Repository<Long, User> {
+public interface UserRepository extends PagingRepository<Long, User> {
 
     /**
      * Finds the user with the given username.
@@ -31,5 +33,16 @@ public interface UserRepository extends Repository<Long, User> {
      */
     default Optional<User> findByEmail(String email) {
         return findAll(UserCriteria.hasEmail(email)).stream().findFirst();
+    }
+
+    /**
+     * {@inheritDoc}
+     * Paging is done in SQL, so only the database repository implements it.
+     *
+     * @throws UnsupportedOperationException for memory and file storage
+     */
+    @Override
+    default Page<User> findAllOnPage(Pageable pageable) {
+        throw new UnsupportedOperationException("Paging is available only with repository.type=DATABASE.");
     }
 }

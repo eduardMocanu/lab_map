@@ -8,6 +8,8 @@ import model.Tuple;
 import model.User;
 import repository.FriendshipRepository;
 import repository.UserRepository;
+import util.paging.Page;
+import util.paging.Pageable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -161,5 +163,29 @@ public class FriendshipService extends AbstractService<Tuple<Long, Long>, Friend
             throw new EntityNotFoundException("User '" + username + "' does not exist.");
         }
         return user.get();
+    }
+
+    /**
+     * Returns one page of the friends of a user.
+     *
+     * @param userId     the id of the user
+     * @param pageNumber the page, starting from 0
+     * @param pageSize   the number of friends per page
+     * @return the friends on that page and the user's total number of friends; empty after the last page
+     * @throws IllegalArgumentException       if {@code pageNumber < 0} or {@code pageSize <= 0}
+     * @throws EntityNotFoundException        if the user does not exist
+     * @throws UnsupportedOperationException  if the storage does not support paging (memory, file)
+     * @throws exceptions.RepositoryException if the storage cannot be read
+     */
+    public Page<User> getFriendsOnPage(Long userId, int pageNumber, int pageSize) {
+        if (pageNumber < 0) {
+            throw new IllegalArgumentException("Page number cannot be negative.");
+        }
+        if (pageSize <= 0) {
+            throw new IllegalArgumentException("Page size must be positive.");
+        }
+        userRepository.findOne(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User " + userId + " does not exist."));
+        return repository.findFriendsOnPage(userId, new Pageable(pageNumber, pageSize));
     }
 }

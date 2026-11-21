@@ -153,4 +153,24 @@ public class RepositoryFactory {
         value = value.trim();
         return value;
     }
+
+    /**
+     * Reads the number of elements shown per page from config.properties.
+     *
+     * @return the page size (page.size)
+     * @throws ConfigurationException if page.size is missing or not a positive whole number
+     */
+    public int getPageSize() {
+        String value = getRequired("page.size");
+        int size;
+        try {
+            size = Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            throw new ConfigurationException("page.size must be a whole number, not '" + value + "'.", e);
+        }
+        if (size <= 0) {
+            throw new ConfigurationException("page.size must be a positive number.");
+        }
+        return size;
+    }
 }

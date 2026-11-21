@@ -9,10 +9,12 @@ import model.User;
 import service.CommunityService;
 import service.FriendshipService;
 import service.UserService;
+import util.paging.Page;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.Scanner;
+import java.util.function.IntFunction;
 
 /**
  * Minimal console interface for the social network.
@@ -26,16 +28,18 @@ public class ConsoleUI implements UI {
     private final FriendshipService friendshipService;
     private final CommunityService communityService;
     private final Scanner scanner = new Scanner(System.in);
+    private final int pageSize;
 
     /**
      * @param u the service for users
      * @param f the service for friendships
      * @param c the service for community analysis
      */
-    public ConsoleUI(UserService u, FriendshipService f, CommunityService c) {
+    public ConsoleUI(UserService u, FriendshipService f, CommunityService c, int pagesize) {
         this.userService = u;
         this.friendshipService = f;
         this.communityService = c;
+        this.pageSize = pagesize;
     }
 
     /**
@@ -124,6 +128,12 @@ public class ConsoleUI implements UI {
                 break;
             case "help":
                 printHelp();
+                break;
+            case "userspage":
+                browseUsers();
+                break;
+            case "friends":
+                browseFriends(parts);
                 break;
             default:
                 System.out.println("Unknown command. Type 'help' to see the commands.");
@@ -263,6 +273,8 @@ public class ConsoleUI implements UI {
         System.out.println("  friendships");
         System.out.println("  communities");
         System.out.println("  sociable");
+        System.out.println("  userspage");
+        System.out.println("  friends <user_id>");
         System.out.println("  help");
         System.out.println("  exit");
     }
@@ -296,5 +308,73 @@ public class ConsoleUI implements UI {
      */
     private boolean isNumber(String text) {
         return text.matches("\\d+");
+    }
+
+    /** Command {@code userspage}: shows the users one page at a time. */
+    private void browseUsers() {
+        browse("Users", pageNumber -> userService.getUsersOnPage(pageNumber, pageSize));
+    }
+
+    /**
+     * Command {@code friends <user id>}: shows the friends of a user one page at a time.
+     *
+     * @param args the words of the command
+     */
+    private void browseFriends(String[] args) {
+        if (args.length != 2) {
+            System.out.println("Usage: friends <user id>");
+            return;
+        }
+        Long userId = Long.parseLong(args[1]);
+        Page<User> first = friendshipService.getFriendsOnPage(userId, 0, pageSize);
+        if (first.totalNumberOfElements() == 0) {
+            System.out.println("User " + userId + " has no friends.");
+            return;
+        }
+        browse("Friends of user " + userId,
+                pageNumber -> friendshipService.getFriendsOnPage(userId, pageNumber, pageSize));
+    }
+
+    /**
+     * Shows pages of users with next / previous navigation and "Page x of y".
+     * Pages are loaded on demand through the given function; the UI contains no SQL.
+     *
+     * @param title    the title printed above each page
+     * @param loadPage returns the page with the given number (from 0)
+     */
+    private void browse(String title, IntFunction<Page<User>> loadPage) {
+        int pageNumber = 0;
+        while (true) {
+            Page<User> page = loadPage.apply(pageNumber);
+            int totalPages = totalPages(page.totalNumberOfElements());
+            System.out.println(title + " - Page " + (pageNumber + 1) + " of " + totalPages);
+            if (page.elementsOnPage().isEmpty()) {
+                System.out.println("  (nothing on this page)");
+            }
+            page.elementsOnPage().forEach(user -> System.out.println("  " + user));
+
+            String choice = askNavigation();
+            if (choice.equals("n") && pageNumber  < totalPages) {
+                pageNumber++;
+            } else if (choice.equals("p") && pageNumber > 0) {
+                pageNumber--;
+            } else if (choice.equals("q")) {
+                return;
+            }
+        }
+    }
+
+    /**
+     * @param totalElements the total number of elements
+     * @return how many pages they fill with this UI's page size (at least 1)
+     */
+    private int totalPages(int totalElements) {
+        return Math.max(1, (totalElements + pageSize - 1) / pageSize);
+    }
+
+    /** @return the navigation choice typed by the user: n (next), p (previous) or q (quit) */
+    private String askNavigation() {
+        System.out.print("[n]ext, [p]revious, [q]uit: ");
+        return scanner.nextLine().trim().toLowerCase();
     }
 }

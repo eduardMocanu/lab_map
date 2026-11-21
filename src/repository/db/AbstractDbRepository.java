@@ -1,6 +1,7 @@
 package repository.db;
 
 import model.Entity;
+import repository.PagingRepository;
 import repository.Repository;
 import validators.Validator;
 

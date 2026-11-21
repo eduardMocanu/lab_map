@@ -3,6 +3,8 @@ package repository.db;
 import exceptions.RepositoryException;
 import model.User;
 import repository.UserRepository;
+import util.paging.Page;
+import util.paging.Pageable;
 import validators.Validator;
 
 import java.sql.Connection;
@@ -41,7 +43,7 @@ public class UserDbRepository extends AbstractDbRepository<Long, User> implement
      * @return the user described by the row, with its id set
      * @throws SQLException if a column cannot be read
      */
-    private User extractUser(ResultSet rs) throws SQLException {
+    static User extractUser(ResultSet rs) throws SQLException {
         User user = new User(rs.getString("username"), rs.getString("email"), rs.getString("password"));
         user.setId(rs.getLong("id"));
         return user;
@@ -55,7 +57,7 @@ public class UserDbRepository extends AbstractDbRepository<Long, User> implement
     @Override
     public Optional<User> findOne(Long id) {
         requireNonNull(id, "Id");
-        String sql = "SELECT " + COLUMNS + " FROM users WHERE id = ?";
+        String sql = "SELECT * FROM users WHERE id = ?";
         try (Connection connection = connect();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setLong(1, id);
@@ -75,7 +77,7 @@ public class UserDbRepository extends AbstractDbRepository<Long, User> implement
      */
     @Override
     public List<User> findAll() {
-        String sql = "SELECT " + COLUMNS + " FROM users ORDER BY id";
+        String sql = "SELECT * FROM users ORDER BY id";
         try (Connection connection = connect();
              PreparedStatement statement = connection.prepareStatement(sql);
              ResultSet rs = statement.executeQuery()) {
@@ -211,7 +213,7 @@ public class UserDbRepository extends AbstractDbRepository<Long, User> implement
         if (value == null) {
             return Optional.empty();
         }
-        String sql = "SELECT " + COLUMNS + " FROM users WHERE " + column + " = ?";
+        String sql = "SELECT * FROM users WHERE " + column + " = ?";
         try (Connection connection = connect();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, value);
@@ -220,6 +222,42 @@ public class UserDbRepository extends AbstractDbRepository<Long, User> implement
             }
         } catch (SQLException e) {
             throw SqlErrors.wrap("find the user", e);
+        }
+    }
+
+    /**
+     * Returns one page of users, ordered by id, paged in SQL with LIMIT and OFFSET.
+     * The page and the total number of users are read on the same connection.
+     *
+     * @param pageable which page to return and how many users per page
+     * @return the users on that page and the total number of users; an empty page after the last one
+     * @throws IllegalArgumentException if {@code pageable} is null
+     * @throws RepositoryException      if the database cannot be read
+     */
+    @Override
+    public Page<User> findAllOnPage(Pageable pageable) {
+        requireNonNull(pageable, "Pageable");
+        String pageSql = "SELECT " + COLUMNS + " FROM users ORDER BY id LIMIT ? OFFSET ?";
+        String countSql = "SELECT count(*) FROM users";
+        try (Connection connection = connect();
+             PreparedStatement pageStatement = connection.prepareStatement(pageSql);
+             PreparedStatement countStatement = connection.prepareStatement(countSql)) {
+
+            pageStatement.setInt(1, pageable.pageSize());
+            pageStatement.setInt(2, pageable.pageNumber() * pageable.pageSize());
+            List<User> users = new ArrayList<>();
+            try (ResultSet rs = pageStatement.executeQuery()) {
+                while (rs.next()) {
+                    users.add(extractUser(rs));
+                }
+            }
+
+            try (ResultSet rs = countStatement.executeQuery()) {
+                rs.next();
+                return new Page<>(users, rs.getInt(1));
+            }
+        } catch (SQLException e) {
+            throw SqlErrors.wrap("read a page of users", e);
         }
     }
 }

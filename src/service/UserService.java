@@ -4,7 +4,10 @@ import exceptions.DuplicateEntityException;
 import exceptions.EntityNotFoundException;
 import model.User;
 import repository.FriendshipRepository;
+import repository.PagingRepository;
 import repository.UserRepository;
+import util.paging.Page;
+import util.paging.Pageable;
 
 import java.util.Optional;
 
@@ -93,5 +96,25 @@ public class UserService extends AbstractService<Long, User, UserRepository> {
             throw new EntityNotFoundException("User '" + username + "' does not exist.");
         }
         return remove(user.get().getId());
+    }
+    /**
+     * Returns one page of users. Paging is done by the storage, so it is available only for
+     * repositories that implement {@link PagingRepository} (the database).
+     *
+     * @param pageNumber the page, starting from 0
+     * @param pageSize   the number of users per page
+     * @return the users on that page and the total number of users; an empty page after the last one
+     * @throws IllegalArgumentException       if {@code pageNumber < 0} or {@code pageSize <= 0}
+     * @throws UnsupportedOperationException  if the storage does not support paging (memory, file)
+     * @throws exceptions.RepositoryException if the storage cannot be read
+     */
+    public Page<User> getUsersOnPage(int pageNumber, int pageSize) {
+        if (pageNumber < 0) {
+            throw new IllegalArgumentException("Page number cannot be negative.");
+        }
+        if (pageSize <= 0) {
+            throw new IllegalArgumentException("Page size must be positive.");
+        }
+        return repository.findAllOnPage(new Pageable(pageNumber, pageSize));
     }
 }
